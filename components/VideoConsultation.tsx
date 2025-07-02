@@ -7,8 +7,8 @@ import { Activity } from 'lucide-react';
 import SimpleDoctor from './SimpleDoctor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import * as poseDetection from '@tensorflow-models/pose-detection';
+import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs';
 import { drawKeypoints, drawSkeleton } from '@/lib/poseUtils';
 
 // Configuration for pose detection
@@ -47,23 +47,45 @@ export default function VideoConsultation() {
     async function initializePoseDetector() {
       setIsLoading(true);
       try {
+        // Ensure TensorFlow.js is ready
         await tf.setBackend('webgl');
         await tf.ready();
         
-        const detectorConfig = {
-          runtime: 'tfjs',
-          modelType: poseModel === 'mediapipe' ? 
-            poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING :
-            poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          enableSmoothing: true,
-        };
-
-        const detector = await poseDetection.createDetector(
-          poseModel === 'mediapipe' ? poseDetection.SupportedModels.MoveNet : poseDetection.SupportedModels.BlazePose,
-          detectorConfig
-        );
+        let detector;
+        if (poseModel === 'mediapipe') {
+          // Use MoveNet for MediaPipe-style detection
+          detector = await poseDetection.createDetector(
+            poseDetection.SupportedModels.MoveNet,
+            {
+              modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+              enableSmoothing: true,
+            }
+          );
+        } else {
+          // Use BlazePose for OpenPose-style detection
+          try {
+            detector = await poseDetection.createDetector(
+              poseDetection.SupportedModels.BlazePose,
+              {
+                runtime: 'tfjs',
+                enableSmoothing: true,
+                modelType: 'full'
+              }
+            );
+          } catch (blazeError) {
+            console.warn('BlazePose not available, falling back to MoveNet:', blazeError);
+            detector = await poseDetection.createDetector(
+              poseDetection.SupportedModels.MoveNet,
+              {
+                modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER,
+                enableSmoothing: true,
+              }
+            );
+          }
+        }
         
         setPoseDetector(detector);
+        console.log(`${poseModel} pose detector initialized successfully`);
       } catch (error) {
         console.error('Error initializing pose detector:', error);
       } finally {
@@ -85,10 +107,22 @@ export default function VideoConsultation() {
   // Start video stream
   const startVideo = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
-        audio: !micMuted
-      });
+      // Request camera and microphone access with optimal settings
+      const constraints = {
+        video: {
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 30, max: 60 },
+          facingMode: 'user' // Front camera for video calls
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
@@ -97,11 +131,27 @@ export default function VideoConsultation() {
         // Start pose detection when video starts playing
         localVideoRef.current.onloadedmetadata = () => {
           localVideoRef.current.play();
+          console.log('Video stream started, beginning pose detection...');
           detectPose();
         };
+        
+        // Handle video errors
+        localVideoRef.current.onerror = (error) => {
+          console.error('Video playback error:', error);
+        };
       }
+      
+      console.log('Camera and microphone access granted successfully');
     } catch (err) {
-      console.error('Error accessing camera:', err);
+      console.error('Error accessing camera/microphone:', err);
+      // Provide user-friendly error messages
+      if (err.name === 'NotAllowedError') {
+        alert('Camera and microphone access denied. Please allow access and try again.');
+      } else if (err.name === 'NotFoundError') {
+        alert('No camera or microphone found. Please check your devices.');
+      } else {
+        alert('Error accessing camera/microphone: ' + err.message);
+      }
     }
   };
 
@@ -121,10 +171,11 @@ export default function VideoConsultation() {
   const toggleVideo = async () => {
     if (videoActive) {
       stopVideo();
+      setVideoActive(false);
     } else {
       await startVideo();
+      setVideoActive(true);
     }
-    setVideoActive(!videoActive);
   };
 
   // Toggle microphone
@@ -164,8 +215,10 @@ export default function VideoConsultation() {
 
   // Detect pose in video frames
   const detectPose = async () => {
-    if (!localVideoRef.current || !canvasRef.current || !poseDetector) {
-      animationFrameRef.current = requestAnimationFrame(detectPose);
+    if (!localVideoRef.current || !canvasRef.current || !poseDetector || !isConnected) {
+      if (isConnected) {
+        animationFrameRef.current = requestAnimationFrame(detectPose);
+      }
       return;
     }
 
@@ -189,18 +242,41 @@ export default function VideoConsultation() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Detect poses
-      const poses = await poseDetector.estimatePoses(video, {
-        flipHorizontal: false,
-      });
+      // Detect poses with model-specific configuration
+      let poses;
+      if (poseModel === 'mediapipe') {
+        poses = await poseDetector.estimatePoses(video, {
+          flipHorizontal: true, // Mirror for better user experience
+        });
+      } else {
+        poses = await poseDetector.estimatePoses(video, {
+          flipHorizontal: true,
+          maxPoses: 1, // Focus on single person
+        });
+      }
 
       // Draw keypoints and skeleton
       if (poses.length > 0) {
-        drawKeypoints(poses[0].keypoints, 0.3, ctx);
-        drawSkeleton(poses[0].keypoints, 0.3, ctx);
+        const pose = poses[0];
+        
+        // Draw pose with different colors for different models
+        const keypointColor = poseModel === 'mediapipe' ? '#00ff00' : '#ff6b6b';
+        const skeletonColor = poseModel === 'mediapipe' ? '#00aa00' : '#ff4757';
+        
+        drawKeypoints(pose.keypoints, 0.3, ctx, keypointColor);
+        drawSkeleton(pose.keypoints, 0.3, ctx, skeletonColor);
+        
+        // Display pose confidence
+        if (pose.score) {
+          ctx.fillStyle = 'white';
+          ctx.fillRect(10, 10, 200, 30);
+          ctx.fillStyle = 'black';
+          ctx.font = '14px Arial';
+          ctx.fillText(`Confidence: ${(pose.score * 100).toFixed(1)}%`, 15, 30);
+        }
       }
       
-      // Calculate FPS
+      // Calculate and display FPS
       const now = performance.now();
       frameCount.current++;
       
@@ -212,9 +288,12 @@ export default function VideoConsultation() {
       
     } catch (error) {
       console.error('Error detecting pose:', error);
+      // Continue detection even if there's an error
     }
     
-    animationFrameRef.current = requestAnimationFrame(detectPose);
+    if (isConnected) {
+      animationFrameRef.current = requestAnimationFrame(detectPose);
+    }
   };
 
   return (

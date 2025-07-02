@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  trailingSlash: true,
+  basePath: process.env.NODE_ENV === 'production' ? '/Kinetic-AI-Final' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/Kinetic-AI-Final/' : '',
   eslint: {
     ignoreDuringBuilds: true,
   },

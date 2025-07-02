@@ -105,12 +105,6 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: ''
   })
-    loginAlerts: boolean
-    deviceManagement: string[]
-    currentPassword: string
-    newPassword: string
-    confirmPassword: string
-  }
 
   // Handle profile form changes
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
