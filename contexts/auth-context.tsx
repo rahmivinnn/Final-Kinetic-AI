@@ -1,3 +1,5 @@
+// DEPRECATED: Semua logic auth dipindahkan ke components/auth-provider.tsx dan menggunakan local storage. Tidak ada lagi dependensi NextAuth atau API.
+
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'

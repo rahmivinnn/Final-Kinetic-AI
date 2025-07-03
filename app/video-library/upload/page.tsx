@@ -38,19 +38,59 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0])
+    try {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0]
+        
+        // Validate file size (500MB limit)
+        if (file.size > 500 * 1024 * 1024) {
+          alert('File size must be less than 500MB')
+          return
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('video/')) {
+          alert('Please select a valid video file')
+          return
+        }
+        
+        setSelectedFile(file)
+      }
+    } catch (error) {
+      console.error('Error selecting file:', error)
+      alert('Error selecting file. Please try again.')
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!selectedFile || !exerciseType || !title) {
+      alert('Please fill in all required fields')
+      return
+    }
+    
     setIsUploading(true)
 
-    // Simulate upload process
-    setTimeout(() => {
+    try {
+      // Simulate upload process with error handling
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate random upload failure for testing
+          if (Math.random() > 0.9) {
+            reject(new Error('Upload failed'))
+          } else {
+            resolve(true)
+          }
+        }, 1000)
+      })
+      
       router.push("/video-library/upload/progress")
-    }, 1000)
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Upload failed. Please try again.')
+      setIsUploading(false)
+    }
   }
 
   return (

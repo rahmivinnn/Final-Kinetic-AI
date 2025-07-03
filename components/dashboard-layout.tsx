@@ -9,13 +9,37 @@ import { useRouter } from "next/navigation"
 
 
 export function DashboardLayout({ children, activeLink = "home" }: { children: React.ReactNode; activeLink?: string }) {
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const router = useRouter()
 
   const logout = async () => {
-    await signOut()
-    router.push("/")
+    try {
+      await signOut()
+      router.push("/")
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
+
+  // Menu dinamis berdasarkan role
+  const patientMenu = [
+    { href: '/dashboard', icon: Home, key: 'home' },
+    { href: '/exercises', icon: Activity, key: 'exercises' },
+    { href: '/appointments', icon: Users, key: 'appointments' },
+    { href: '/messages', icon: MessageSquare, key: 'messages' },
+    { href: '/progress', icon: BarChart2, key: 'progress' },
+    { href: '/video-library', icon: FileText, key: 'videos' },
+    { href: '/pose-estimation', icon: Camera, key: 'pose' },
+  ];
+  const providerMenu = [
+    { href: '/dashboard', icon: Home, key: 'home' },
+    { href: '/patients', icon: Users, key: 'patients' },
+    { href: '/appointments', icon: Activity, key: 'appointments' },
+    { href: '/analytics', icon: BarChart2, key: 'analytics' },
+    { href: '/messages', icon: MessageSquare, key: 'messages' },
+  ];
+  const menu = user?.role === 'provider' ? providerMenu : patientMenu;
+
   return (
     <div className="flex h-screen bg-[#f0f4f9]">
       {/* Sidebar */}
@@ -25,63 +49,15 @@ export function DashboardLayout({ children, activeLink = "home" }: { children: R
         </div>
 
         <nav className="flex flex-col items-center space-y-6 flex-1">
-          <Link
-            href="/dashboard"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "home" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <Home className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/exercises"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "exercises" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <Activity className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/appointments"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "appointments" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <Users className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/messages"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "messages" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <MessageSquare className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/progress"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "progress" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <BarChart2 className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/video-library"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "videos" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <FileText className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/pose-estimation"
-            className={`w-10 h-10 rounded-xl ${
-              activeLink === "pose" ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"
-            } flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
-          >
-            <Camera className="w-5 h-5" />
-          </Link>
-
+          {menu.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`w-10 h-10 rounded-xl ${activeLink === item.key ? "bg-[#7e58f4] bg-opacity-20" : "hover:bg-white/10"} flex items-center justify-center text-white transition-all duration-200 hover:scale-105`}
+            >
+              <item.icon className="w-5 h-5" />
+            </Link>
+          ))}
         </nav>
 
         <div className="mt-auto flex flex-col items-center space-y-6">

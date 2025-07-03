@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { exerciseCategories } from '@/lib/exercise-data';
+import { useAuth } from '@/components/auth-provider';
 
 // Type for components with children
 interface WithChildren {
@@ -48,6 +49,7 @@ const ExerciseLibrary = dynamic(
 );
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   // State untuk jadwal konsultasi
   const [showAppointmentModal, setShowAppointmentModal] = useState(false)
   const [availableSlots] = useState([
@@ -76,6 +78,13 @@ export default function DashboardPage() {
   // State untuk analisis pose
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState(0)
+
+  // Simulasi data pasien untuk provider
+  const [patients, setPatients] = useState([
+    { id: 'p1', name: 'Budi Santoso', email: 'budi@example.com', progress: 80 },
+    { id: 'p2', name: 'Rina Wijaya', email: 'rina@example.com', progress: 60 },
+    { id: 'p3', name: 'Andi Pratama', email: 'andi@example.com', progress: 90 },
+  ]);
 
   // Toggle status latihan
   const toggleExercise = (id: number) => {
@@ -114,6 +123,80 @@ export default function DashboardPage() {
     }, 300)
   }
 
+  if (!user) return <div className="text-center py-20">Loading...</div>;
+  if (user.role === 'provider') {
+    // Dashboard untuk provider
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+          <p className="text-gray-600">Welcome, {user.name}! Here is your provider overview.</p>
+        </header>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Kolom kiri - List Pasien */}
+          <div className="space-y-6">
+            <Card className="border border-gray-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Patient List</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-gray-100">
+                  {patients.map((p) => (
+                    <li key={p.id} className="py-2 flex justify-between items-center">
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-xs text-gray-500">{p.email}</span>
+                      <span className="ml-2 text-green-600 font-bold">{p.progress}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+          {/* Kolom tengah - Appointment Management */}
+          <div className="space-y-6">
+            <Card className="border border-gray-200">
+              <CardHeader>
+                <CardTitle className="text-lg">Appointment Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-700">You have 3 upcoming appointments.</div>
+                {/* Simulasi appointment list */}
+                <ul className="mt-4 space-y-2">
+                  <li className="flex justify-between items-center">
+                    <span>Budi Santoso</span>
+                    <span>Tomorrow, 10:00 AM</span>
+                  </li>
+                  <li className="flex justify-between items-center">
+                    <span>Rina Wijaya</span>
+                    <span>Tomorrow, 2:00 PM</span>
+                  </li>
+                  <li className="flex justify-between items-center">
+                    <span>Andi Pratama</span>
+                    <span>Friday, 9:00 AM</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+          {/* Kolom kanan - Analytics */}
+          <div className="space-y-6">
+            <Card className="border border-gray-200">
+              <CardHeader>
+                <CardTitle className="text-lg">Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">Total Patients: <span className="font-bold">{patients.length}</span></div>
+                <div className="mb-4">Average Progress: <span className="font-bold">{(patients.reduce((a, b) => a + b.progress, 0) / patients.length).toFixed(1)}%</span></div>
+                <div className="mb-4">Active Appointments: <span className="font-bold">3</span></div>
+                <Progress value={patients.reduce((a, b) => a + b.progress, 0) / patients.length} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // Dashboard untuk patient (default)
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <header className="mb-8">

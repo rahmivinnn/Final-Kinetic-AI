@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { signIn, signOut, useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 
 type UserRole = "patient" | "provider" | "admin"
@@ -11,6 +10,7 @@ interface User {
   id: string
   name: string
   email: string
+  password: string
   role: UserRole
   image?: string
 }
@@ -30,45 +30,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
-  const { data: session, status } = useSession()
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      setUser({
-        id: session.user.id || '',
-        name: session.user.name || '',
-        email: session.user.email || '',
-        role: (session.user.role as UserRole) || 'patient',
-        image: session.user.image || undefined
-      })
-    } else if (status === 'unauthenticated') {
-      setUser(null)
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
     }
-    
-    if (status !== 'loading') {
+    if (storedUser) {
       setIsLoading(false)
     }
-  }, [session, status])
+  }, [])
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true)
-      const result = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-        callbackUrl: pathname || '/dashboard'
-      })
-
-      if (result?.error) {
-        toast.error("Invalid email or password")
-        return { success: false, error: result.error }
+      // Simulate login: cek user di localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]')
+      const found = users.find((u: User) => u.email === email && u.password === password)
+      if (found) {
+        setUser(found)
+        localStorage.setItem('user', JSON.stringify(found))
+        return { success: true }
+      } else {
+        toast.error('Invalid email or password')
+        return { success: false, error: 'Invalid email or password' }
       }
-
-      return { success: true }
     } catch (error) {
       console.error('Login error:', error)
-      const errorMessage = "Login failed. Please try again."
+      const errorMessage = 'Login failed. Please try again.'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
@@ -79,20 +68,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string, role: UserRole = 'patient') => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name, role })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed')
+      // Simulate registration: simpan ke localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]')
+      if (users.find((u: User) => u.email === email)) {
+        toast.error('Email already registered')
+        return { success: false, error: 'Email already registered' }
       }
-
-      // Auto-login after registration
-      await login(email, password)
+      const newUser: User = {
+        id: Date.now().toString(),
+        name,
+        email,
+        password,
+        role,
+        image: undefined
+      }
+      users.push(newUser)
+      localStorage.setItem('users', JSON.stringify(users))
+      setUser(newUser)
+      localStorage.setItem('user', JSON.stringify(newUser))
       return { success: true }
     } catch (error) {
       console.error('Registration error:', error)
@@ -107,7 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setIsLoading(true)
-      await signOut({ redirect: false })
+      setUser(null)
+      localStorage.removeItem('user')
       router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)

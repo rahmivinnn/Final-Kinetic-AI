@@ -1,9 +1,17 @@
+// This route is not compatible with static exports
+// We'll disable it for static builds
+import { NextResponse } from 'next/server';
 import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import NextAuth from "next-auth/next"
+
+// This tells Next.js to handle this route on the server
+// and not to include it in static exports
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 declare module "next-auth" {
   interface Session {

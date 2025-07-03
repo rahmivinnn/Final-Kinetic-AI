@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./prisma/dev.db"
 }
 
 model User {
@@ -20,11 +20,12 @@ model User {
   role          UserRole  @default(PATIENT)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  subscriptions Subscription[]
-  exercises     UserExercise[]
-  appointments  Appointment[]
+  sessions               Session[]
+  accounts              Account[]
+  subscriptions         Subscription[]
+  exercises             UserExercise[]
+  patientAppointments   Appointment[] @relation("patientAppointments")
+  therapistAppointments Appointment[] @relation("therapistAppointments")
   
   @@map("users")
 }
@@ -106,9 +107,10 @@ model Appointment {
   notes       String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  user        User     @relation("patient", fields: [userId], references: [id])
-  therapist   User     @relation("therapist", fields: [therapistId], references: [id])
+  user        User     @relation("patientAppointments", fields: [userId], references: [id])
+  therapist   User     @relation("therapistAppointments", fields: [therapistId], references: [id])
   
+  @@unique([userId, therapistId, dateTime])
   @@map("appointments")
 }
 
