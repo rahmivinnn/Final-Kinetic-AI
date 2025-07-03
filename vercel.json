@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:netlify",
+  "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install --legacy-peer-deps",
   "builds": [
     {
