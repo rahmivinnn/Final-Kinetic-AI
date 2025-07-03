@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:netlify": "npm install --legacy-peer-deps && next build",
+    "build:netlify": "npm install --legacy-peer-deps && npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "export": "next build",

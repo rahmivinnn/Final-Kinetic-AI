@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { VideoCall } from '@/components/video-call'
+import VideoCall from '@/components/video-call'
 import { PoseEstimation } from '@/components/pose-estimation'
 import { useAuth } from '@/components/auth-provider'
 import { useAuthApi } from '@/hooks/use-auth-api'
