@@ -186,7 +186,7 @@ export const PoseEstimation: React.FC<PoseEstimationProps> = ({
     // setStatus('detecting');
     // Jika tidak ada pose:
     // setStatus('no-person');
-  }, [isPaused, ...]);
+  }, [isPaused]);
 
   // Session summary
   const duration = sessionStart ? Math.floor((Date.now() - sessionStart) / 1000) : 0;
